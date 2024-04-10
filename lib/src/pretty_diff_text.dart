@@ -29,6 +29,8 @@ class PrettyDiffText extends StatelessWidget {
   /// The default value is 1.0.
   final double diffTimeout;
 
+  final DisplayType displayType;
+
   /// Cost of an empty edit operation in terms of edit characters.
   /// This value is used when [DiffCleanupType] is selected as [DiffCleanupType.EFFICIENCY]
   /// The larger the edit cost, the more aggressive the cleanup.
@@ -72,6 +74,7 @@ class PrettyDiffText extends StatelessWidget {
     this.maxLines,
     this.locale,
     this.strutStyle,
+    this.displayType = DisplayType.INLINE,
     this.textWidthBasis = TextWidthBasis.parent,
     this.textHeightBehavior,
   }) : super(key: key);
@@ -87,28 +90,83 @@ class PrettyDiffText extends StatelessWidget {
 
     final textSpans = List<TextSpan>.empty(growable: true);
 
+    final firstLine = List<TextSpan>.empty(growable: true);
+    final secondLine = List<TextSpan>.empty(growable: true);
+
     diffs.forEach((diff) {
       TextStyle? textStyle = getTextStyleByDiffOperation(diff);
-      textSpans.add(TextSpan(text: diff.text, style: textStyle));
+
+      switch (displayType) {
+        case DisplayType.COMPARE:
+          if (diff.operation == -1) {
+            firstLine.add(TextSpan(text: diff.text, style: textStyle));
+          } else if (diff.operation == 1) {
+            secondLine.add(TextSpan(text: diff.text, style: textStyle));
+          } else {
+            firstLine.add(TextSpan(text: diff.text));
+            secondLine.add(TextSpan(text: diff.text));
+          }
+        case DisplayType.INLINE:
+          textSpans.add(TextSpan(text: diff.text, style: textStyle));
+      }
     });
 
-    return RichText(
-      text: TextSpan(
-        text: '',
-        style: this.defaultTextStyle,
-        children: textSpans,
-      ),
-      textAlign: this.textAlign,
-      textDirection: this.textDirection,
-      softWrap: this.softWrap,
-      overflow: this.overflow,
-      maxLines: this.maxLines,
-      textScaler: TextScaler.linear(this.textScaleFactor),
-      locale: this.locale,
-      strutStyle: this.strutStyle,
-      textWidthBasis: this.textWidthBasis,
-      textHeightBehavior: this.textHeightBehavior,
-    );
+    return displayType == DisplayType.INLINE
+        ? RichText(
+            text: TextSpan(
+              text: '',
+              style: this.defaultTextStyle,
+              children: textSpans,
+            ),
+            textAlign: this.textAlign,
+            textDirection: this.textDirection,
+            softWrap: this.softWrap,
+            overflow: this.overflow,
+            maxLines: this.maxLines,
+            textScaler: TextScaler.linear(this.textScaleFactor),
+            locale: this.locale,
+            strutStyle: this.strutStyle,
+            textWidthBasis: this.textWidthBasis,
+            textHeightBehavior: this.textHeightBehavior,
+          )
+        : Column(
+            children: [
+              RichText(
+                text: TextSpan(
+                  text: '',
+                  style: this.defaultTextStyle,
+                  children: firstLine,
+                ),
+                textAlign: this.textAlign,
+                textDirection: this.textDirection,
+                softWrap: this.softWrap,
+                overflow: this.overflow,
+                maxLines: this.maxLines,
+                textScaler: TextScaler.linear(this.textScaleFactor),
+                locale: this.locale,
+                strutStyle: this.strutStyle,
+                textWidthBasis: this.textWidthBasis,
+                textHeightBehavior: this.textHeightBehavior,
+              ),
+              RichText(
+                text: TextSpan(
+                  text: '',
+                  style: this.defaultTextStyle,
+                  children: secondLine,
+                ),
+                textAlign: this.textAlign,
+                textDirection: this.textDirection,
+                softWrap: this.softWrap,
+                overflow: this.overflow,
+                maxLines: this.maxLines,
+                textScaler: TextScaler.linear(this.textScaleFactor),
+                locale: this.locale,
+                strutStyle: this.strutStyle,
+                textWidthBasis: this.textWidthBasis,
+                textHeightBehavior: this.textHeightBehavior,
+              ),
+            ],
+          );
   }
 
   TextStyle getTextStyleByDiffOperation(Diff diff) {

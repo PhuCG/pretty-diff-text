@@ -9,3 +9,5 @@ enum DiffCleanupType {
   /// No cleanup. Raw output.
   NONE
 }
+
+enum DisplayType { INLINE, COMPARE }

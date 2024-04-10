@@ -41,7 +41,8 @@ class _MyHomePageState extends State<MyHomePage> {
     _newTextEditingController = TextEditingController();
     _diffTimeoutEditingController = TextEditingController();
     _editCostEditingController = TextEditingController();
-    _oldTextEditingController.text = "Let's go to Hatay and eat something delicious. Because everything there is super delicious";
+    _oldTextEditingController.text =
+        "Let's go to Hatay and eat something delicious. Because everything there is super delicious";
     _newTextEditingController.text =
         "Let's go to Antakya eat something very delicious and unique. Because everything(especially kebabs and kunefe) super delicious!!!";
     _diffTimeoutEditingController.text = "1.0";
@@ -119,7 +120,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         child: Padding(
                           padding: const EdgeInsets.only(bottom: 10),
                           child: Text(
-                            "--- PrettyDiffText OUTPUT ---",
+                            "--- PrettyDiffText INLINE ---",
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -129,10 +130,49 @@ class _MyHomePageState extends State<MyHomePage> {
                           textAlign: TextAlign.center,
                           oldText: _oldTextEditingController.text,
                           newText: _newTextEditingController.text,
-                          diffCleanupType: _diffCleanupType ?? DiffCleanupType.SEMANTIC,
+                          diffCleanupType:
+                              _diffCleanupType ?? DiffCleanupType.SEMANTIC,
                           diffTimeout: diffTimeoutToDouble(),
                           diffEditCost: editCostToDouble(),
                         ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.all(
+                    Radius.circular(10),
+                  ),
+                ),
+                margin: EdgeInsets.only(top: 8),
+                child: Padding(
+                  padding: const EdgeInsets.all(10.0),
+                  child: Column(
+                    children: [
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Text(
+                            "--- PrettyDiffText COMPARE ---",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                      PrettyDiffText(
+                        displayType: DisplayType.COMPARE,
+                        textAlign: TextAlign.left,
+                        oldText: _oldTextEditingController.text,
+                        newText: _newTextEditingController.text,
+                        diffCleanupType:
+                            _diffCleanupType ?? DiffCleanupType.SEMANTIC,
+                        diffTimeout: diffTimeoutToDouble(),
+                        diffEditCost: editCostToDouble(),
                       ),
                     ],
                   ),
@@ -179,7 +219,8 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             RadioListTile(
                 title: Text("Semantic Cleanup"),
-                subtitle: Text("Increase human readability by factoring out commonalities which are likely to be coincidental"),
+                subtitle: Text(
+                    "Increase human readability by factoring out commonalities which are likely to be coincidental"),
                 value: DiffCleanupType.SEMANTIC,
                 groupValue: _diffCleanupType,
                 onChanged: (DiffCleanupType? value) {
@@ -240,7 +281,8 @@ class _MyHomePageState extends State<MyHomePage> {
       return response;
     } catch (e) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Enter a valid double value for edit cost")));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text("Enter a valid double value for edit cost")));
       });
       return 1.0; // default value for timeout
     }
@@ -253,7 +295,8 @@ class _MyHomePageState extends State<MyHomePage> {
       return response;
     } catch (e) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Enter a valid integer value for edit cost")));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text("Enter a valid integer value for edit cost")));
       });
       return 4; // default value for edit cost
     }
