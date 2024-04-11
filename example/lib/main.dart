@@ -33,7 +33,7 @@ class _MyHomePageState extends State<MyHomePage> {
   late final TextEditingController _newTextEditingController;
   late final TextEditingController _diffTimeoutEditingController;
   late final TextEditingController _editCostEditingController;
-  DiffCleanupType? _diffCleanupType = DiffCleanupType.SEMANTIC;
+  DiffCleanupType? _diffCleanupType = DiffCleanupType.EFFICIENCY;
 
   @override
   void initState() {
@@ -42,9 +42,11 @@ class _MyHomePageState extends State<MyHomePage> {
     _diffTimeoutEditingController = TextEditingController();
     _editCostEditingController = TextEditingController();
     _oldTextEditingController.text =
-        "Let's go to Hatay and eat something delicious. Because everything there is super delicious";
+        "She don't know how to swim and neither can her brother.";
+
     _newTextEditingController.text =
-        "Let's go to Antakya eat something very delicious and unique. Because everything(especially kebabs and kunefe) super delicious!!!";
+        "She doesn't know how to swim and neither does her brother.";
+
     _diffTimeoutEditingController.text = "1.0";
     _editCostEditingController.text = "4";
     super.initState();
@@ -179,95 +181,6 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.only(top: 25.0),
-              child: Row(children: [
-                Text(
-                  "Diff timeout: ",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                SizedBox(
-                  width: 40,
-                  height: 30,
-                  child: TextField(
-                    keyboardType: TextInputType.number,
-                    controller: _diffTimeoutEditingController,
-                    onChanged: (string) {
-                      setState(() {});
-                    },
-                    decoration: InputDecoration(
-                      contentPadding: EdgeInsets.all(5),
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                Text(
-                  " seconds",
-                ),
-              ]),
-            ),
-            Text(
-              "If the mapping phase of the diff computation takes longer than this, then the computation is truncated and the best solution to date is returned. While guaranteed to be correct, it may not be optimal. A timeout of '0' allows for unlimited computation.",
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 15, bottom: 3),
-              child: Text(
-                "Post-diff cleanup:",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            RadioListTile(
-                title: Text("Semantic Cleanup"),
-                subtitle: Text(
-                    "Increase human readability by factoring out commonalities which are likely to be coincidental"),
-                value: DiffCleanupType.SEMANTIC,
-                groupValue: _diffCleanupType,
-                onChanged: (DiffCleanupType? value) {
-                  setState(() {
-                    _diffCleanupType = value;
-                  });
-                }),
-            RadioListTile(
-                title: Row(
-                  children: [
-                    Text("Efficiency Cleanup. Edit cost: "),
-                    SizedBox(
-                        width: 40,
-                        height: 30,
-                        child: TextField(
-                          keyboardType: TextInputType.number,
-                          controller: _editCostEditingController,
-                          onChanged: (string) {
-                            setState(() {});
-                          },
-                          decoration: InputDecoration(
-                            contentPadding: EdgeInsets.all(5),
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(),
-                          ),
-                        ))
-                  ],
-                ),
-                subtitle: Text(
-                    "Increase computational efficiency by factoring out short commonalities which are not worth the overhead. The larger the edit cost, the more aggressive the cleanup"),
-                value: DiffCleanupType.EFFICIENCY,
-                groupValue: _diffCleanupType,
-                onChanged: (DiffCleanupType? value) {
-                  setState(() {
-                    _diffCleanupType = value;
-                  });
-                }),
-            RadioListTile(
-                title: Text("No Cleanup"),
-                subtitle: Text("Raw output"),
-                value: DiffCleanupType.NONE,
-                groupValue: _diffCleanupType,
-                onChanged: (DiffCleanupType? value) {
-                  setState(() {
-                    _diffCleanupType = value;
-                  });
-                }),
           ],
         ),
       ),

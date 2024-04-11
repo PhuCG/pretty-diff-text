@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:diff_match_patch/diff_match_patch.dart';
 import 'package:flutter/material.dart';
 import 'package:pretty_diff_text/src/diff_cleanup_type.dart';
@@ -56,11 +58,12 @@ class PrettyDiffText extends StatelessWidget {
     required this.oldText,
     required this.newText,
     this.defaultTextStyle = const TextStyle(color: Colors.black),
-    this.addedTextStyle = const TextStyle(
-      backgroundColor: Color.fromARGB(255, 139, 197, 139),
-    ),
+    this.addedTextStyle = const TextStyle(color: Colors.green
+        // backgroundColor: Color.fromARGB(255, 139, 197, 139),
+        ),
     this.deletedTextStyle = const TextStyle(
-      backgroundColor: Color.fromARGB(255, 255, 129, 129),
+      color: Colors.red,
+      // backgroundColor: Color.fromARGB(255, 255, 129, 129),
       decoration: TextDecoration.lineThrough,
     ),
     this.diffTimeout = 1.0,
@@ -89,45 +92,122 @@ class PrettyDiffText extends StatelessWidget {
     cleanupDiffs(dmp, diffs);
 
     final textSpans = List<TextSpan>.empty(growable: true);
+    final commonWords = List<Diff>.empty(growable: true);
 
-    final firstLine = List<TextSpan>.empty(growable: true);
-    final secondLine = List<TextSpan>.empty(growable: true);
-
-    diffs.forEach((diff) {
-      TextStyle? textStyle = getTextStyleByDiffOperation(diff);
-
-      switch (displayType) {
-        case DisplayType.COMPARE:
-          if (diff.operation == -1) {
-            firstLine.add(TextSpan(text: diff.text, style: textStyle));
-          } else if (diff.operation == 1) {
-            secondLine.add(TextSpan(text: diff.text, style: textStyle));
-          } else {
-            firstLine.add(TextSpan(text: diff.text));
-            secondLine.add(TextSpan(text: diff.text));
+    for (int i = 0; i < diffs.length; i++) {
+      if (diffs[i].operation == -1) {
+        textSpans
+            .add(TextSpan(text: diffs[i].text + ' ', style: deletedTextStyle));
+        for (int a = i; a > 0; a--) {
+          final index = a - 1;
+          if (index > -1 && diffs[index].operation == 0) {
+            final a1 = diffs[index].text.split(' ').last + diffs[i].text;
+            if (diffs[index].text.split(' ').last.length > 1) {
+              commonWords.add(Diff(-1, diffs[index].text.split(' ').last));
+              if (a1.length > diffs[index].text.split(' ').last.length) {
+                commonWords.add(Diff(-1, a1));
+              }
+            } else {
+              commonWords.add(Diff(-1, a1));
+            }
+            break;
           }
-        case DisplayType.INLINE:
-          textSpans.add(TextSpan(text: diff.text, style: textStyle));
+        }
+      }
+
+      if (diffs[i].operation == 0) textSpans.add(TextSpan(text: diffs[i].text));
+
+      if (diffs[i].operation == 1) {
+        if (diffs[i].text.contains(' ')) {
+          textSpans.add(TextSpan(text: diffs[i].text, style: addedTextStyle));
+          commonWords.add(Diff(1, diffs[i].text));
+        } else {
+          textSpans.add(TextSpan(text: diffs[i].text, style: addedTextStyle));
+
+          var newText = diffs[i].text;
+
+          for (int a = i; a > 0; a--) {
+            final index = a - 1;
+            if (index > -1 && diffs[index].operation == 0) {
+              final a1 = diffs[index].text.split(' ').last + diffs[i].text;
+
+              if (diffs[index].text.split(' ').last.length > 1) {
+                // commonWords.add(Diff(1, diffs[index].text.split(' ').last));
+                newText = diffs[index].text.split(' ').last + newText;
+                if (a1.length > diffs[index].text.split(' ').last.length) {
+                  commonWords.add(Diff(-1, a1));
+                }
+              } else {
+                commonWords.add(Diff(1, a1));
+              }
+              break;
+            }
+          }
+
+          for (int b = i; b < diffs.length; b++) {
+            final index = b + 1;
+            if (index < diffs.length - 1 && diffs[index].operation == 0) {
+              var a1 = diffs[index].text.split(' ').first;
+              log(a1);
+              if (a1.isNotEmpty) {
+                newText = newText + a1;
+                a1 = a1 + diffs[index].text;
+                // commonWords.add(Diff(1, a1));
+                break;
+              }
+            }
+          }
+          commonWords.add(Diff(1, newText));
+        }
+      }
+    }
+
+    final newCommonWords = List<Diff>.empty(growable: true);
+
+    commonWords.forEach((element) {
+      final list = element.text.split(' ');
+      if (list.length == 1) {
+        newCommonWords.add(element);
+      } else {
+        list.forEach((e) {
+          if (e.isNotEmpty) newCommonWords.add(Diff(element.operation, e));
+        });
       }
     });
 
+    final firstLine = beautifullTextSpans(
+      oldText,
+      newCommonWords,
+      deletedTextStyle,
+    );
+
+    final secondLine = beautifullTextSpans(
+      newText,
+      newCommonWords,
+      addedTextStyle,
+    );
+
     return displayType == DisplayType.INLINE
-        ? RichText(
-            text: TextSpan(
-              text: '',
-              style: this.defaultTextStyle,
-              children: textSpans,
-            ),
-            textAlign: this.textAlign,
-            textDirection: this.textDirection,
-            softWrap: this.softWrap,
-            overflow: this.overflow,
-            maxLines: this.maxLines,
-            textScaler: TextScaler.linear(this.textScaleFactor),
-            locale: this.locale,
-            strutStyle: this.strutStyle,
-            textWidthBasis: this.textWidthBasis,
-            textHeightBehavior: this.textHeightBehavior,
+        ? Column(
+            children: [
+              RichText(
+                text: TextSpan(
+                  text: '',
+                  style: this.defaultTextStyle,
+                  children: textSpans,
+                ),
+                textAlign: this.textAlign,
+                textDirection: this.textDirection,
+                softWrap: this.softWrap,
+                overflow: this.overflow,
+                maxLines: this.maxLines,
+                textScaler: TextScaler.linear(this.textScaleFactor),
+                locale: this.locale,
+                strutStyle: this.strutStyle,
+                textWidthBasis: this.textWidthBasis,
+                textHeightBehavior: this.textHeightBehavior,
+              ),
+            ],
           )
         : Column(
             children: [
@@ -183,6 +263,31 @@ class PrettyDiffText extends StatelessWidget {
       default:
         throw "Unknown diff operation. Diff operation should be one of: [DIFF_INSERT], [DIFF_DELETE] or [DIFF_EQUAL].";
     }
+  }
+
+  List<TextSpan> beautifullTextSpans(
+      String text, List<Diff> commonWords, TextStyle style) {
+    final textSpans = List<TextSpan>.empty(growable: true);
+    final data = text.split(' ');
+
+    for (int i = 0; i < data.length; i++) {
+      var add = false;
+      if (data[i].length > 1) {
+        for (int j = 0; j < commonWords.length; j++) {
+          final dataContains = data[i] == commonWords[j].text;
+          // final wordContains = commonWords[j].text.contains(data[i]);
+          // log('$j ${data[i]} ${commonWords[j].text} $dataContains');
+
+          if (dataContains) {
+            textSpans.add(TextSpan(text: data[i] + ' ', style: style));
+            add = true;
+            break;
+          }
+        }
+      }
+      if (add == false) textSpans.add(TextSpan(text: data[i] + ' '));
+    }
+    return textSpans;
   }
 
   void cleanupDiffs(DiffMatchPatch dmp, List<Diff> diffs) {
