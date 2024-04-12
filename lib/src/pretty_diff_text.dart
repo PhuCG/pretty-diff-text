@@ -92,100 +92,198 @@ class PrettyDiffText extends StatelessWidget {
     cleanupDiffs(dmp, diffs);
 
     final textSpans = List<TextSpan>.empty(growable: true);
-    final commonWords = List<Diff>.empty(growable: true);
+
+    final commonWords = List<String>.empty(growable: true);
 
     for (int i = 0; i < diffs.length; i++) {
-      if (diffs[i].operation == -1) {
-        textSpans
-            .add(TextSpan(text: diffs[i].text + ' ', style: deletedTextStyle));
-        for (int a = i; a > 0; a--) {
-          final index = a - 1;
-          if (index > -1 && diffs[index].operation == 0) {
-            final a1 = diffs[index].text.split(' ').last + diffs[i].text;
-            if (diffs[index].text.split(' ').last.length > 1) {
-              commonWords.add(Diff(-1, diffs[index].text.split(' ').last));
-              if (a1.length > diffs[index].text.split(' ').last.length) {
-                commonWords.add(Diff(-1, a1));
-              }
-            } else {
-              commonWords.add(Diff(-1, a1));
-            }
-            break;
-          }
-        }
-      }
-
-      if (diffs[i].operation == 0) textSpans.add(TextSpan(text: diffs[i].text));
-
-      if (diffs[i].operation == 1) {
-        if (diffs[i].text.contains(' ')) {
-          textSpans.add(TextSpan(text: diffs[i].text, style: addedTextStyle));
-          commonWords.add(Diff(1, diffs[i].text));
-        } else {
-          textSpans.add(TextSpan(text: diffs[i].text, style: addedTextStyle));
-
-          var newText = diffs[i].text;
-
-          for (int a = i; a > 0; a--) {
-            final index = a - 1;
-            if (index > -1 && diffs[index].operation == 0) {
-              final a1 = diffs[index].text.split(' ').last + diffs[i].text;
-
-              if (diffs[index].text.split(' ').last.length > 1) {
-                // commonWords.add(Diff(1, diffs[index].text.split(' ').last));
-                newText = diffs[index].text.split(' ').last + newText;
-                if (a1.length > diffs[index].text.split(' ').last.length) {
-                  commonWords.add(Diff(-1, a1));
+      var commonText = '';
+      if (diffs[i].operation == 0) {
+        if (i == diffs.length - 1) {
+          // lui
+          final startText = diffs[i].text.startsWith(' ');
+          if (!startText) {
+            for (int j = i; j > 0; j--) {
+              final index = j - 1;
+              final diff = diffs[index];
+              if (diff.operation == 1) {
+                if (diff.text.endsWith('')) {
+                  final a =
+                      diff.text.split(' ').last + diffs[i].text.split(' ').last;
+                  commonWords.add(a);
                 }
-              } else {
-                commonWords.add(Diff(1, a1));
+                break;
               }
-              break;
             }
-          }
+            for (int j = i; j > 0; j--) {
+              final index = j - 1;
+              final diff = diffs[index];
+              if (diff.operation == -1) {
+                if (diff.text.endsWith('')) {
+                  final a =
+                      diff.text.split(' ').last + diffs[i].text.split(' ').last;
+                  commonWords.add(a);
+                }
+                break;
+              }
+            }
+            for (int j = i; j > 0; j--) {
+              final index = j - 1;
+              final diff = diffs[index];
+              if (diff.operation == 0) {
+                if (!diff.text.endsWith(' ')) {
+                  final a = diff.text.split(' ').last +
+                      diffs[i].text.split(' ').first;
 
-          for (int b = i; b < diffs.length; b++) {
-            final index = b + 1;
-            if (index < diffs.length - 1 && diffs[index].operation == 0) {
-              var a1 = diffs[index].text.split(' ').first;
-              log(a1);
-              if (a1.isNotEmpty) {
-                newText = newText + a1;
-                a1 = a1 + diffs[index].text;
-                // commonWords.add(Diff(1, a1));
+                  commonWords.add(a);
+                }
                 break;
               }
             }
           }
-          commonWords.add(Diff(1, newText));
+        } else if (i > 0) {
+          // lui
+          final startText = diffs[i].text.startsWith(' ');
+          if (!startText) {
+            for (int j = i; j > 0; j--) {
+              final index = j - 1;
+              final diff = diffs[index];
+              if (diff.operation == 0) {
+                if (diff.text.endsWith('')) {
+                  final a = diff.text.split(' ').last +
+                      diffs[i].text.split(' ').first;
+                  commonText = commonText + a;
+                }
+                break;
+              }
+            }
+          }
+
+          // toi
+          final endText = diffs[i].text.endsWith(' ');
+          if (!endText) {
+            if (i < diffs.length && diffs[i + 1].operation == -1) {
+              commonWords.add(diffs[i].text.split(' ').last);
+            }
+
+            for (int j = i; j < diffs.length; j++) {
+              final index = j + 1;
+              if (index < diffs.length) {
+                final diff = diffs[index];
+                if (diff.operation == 1) {
+                  if (diff.text.startsWith('')) {
+                    final a = diffs[i].text.split(' ').last +
+                        diff.text.split(' ').first;
+                    commonWords.add(diffs[i].text.split(' ').last);
+                    commonText = commonText + a;
+                  }
+                  break;
+                }
+              }
+            }
+          }
+        } else {
+          // tim kiem toi
+          final endText = diffs[i].text.endsWith(' ');
+          if (!endText) {
+            for (int j = i; j < diffs.length; j++) {
+              final index = j + 1;
+              if (index < diffs.length) {
+                final diff = diffs[index];
+                if (diff.operation == 1) {
+                  if (diff.text.startsWith('')) {
+                    final a = diffs[i].text.split(' ').last +
+                        diff.text.split(' ').first;
+                    commonText = commonText + a;
+                    break;
+                  }
+                }
+              }
+            }
+          }
         }
       }
+      if (diffs[i].operation == 1) {
+        // lui ve 0
+        final startText = diffs[i].text.startsWith(' ');
+        final space = diffs[i].text.trim().isEmpty;
+        if (!startText || space) {
+          for (int j = i; j > 0; j--) {
+            final index = j - 1;
+            final diff = diffs[index];
+            if (diff.operation == 0) {
+              if (diff.text.endsWith('')) {
+                final a =
+                    diff.text.split(' ').last + diffs[i].text.split(' ').first;
+                commonWords.add(diff.text.split(' ').last);
+                commonText = commonText + a;
+              }
+              break;
+            }
+          }
+        }
+        // tien toi 0
+        final endText = diffs[i].text.endsWith(' ');
+        if (endText) {}
+        for (int j = i; j < diffs.length; j++) {
+          final index = j + 1;
+          if (index < diffs.length) {
+            final diff = diffs[index];
+            if (diff.operation == 0) {
+              if (diff.text.startsWith('')) {
+                commonText = commonText + diff.text.split(' ').first;
+              }
+              break;
+            }
+          }
+        }
+      }
+      // -1
+      if (diffs[i].operation == -1) {
+        // lui ve 0
+        final startText = diffs[i].text.startsWith(' ');
+        if (!startText) {
+          for (int j = i; j > 0; j--) {
+            final index = j - 1;
+            final diff = diffs[index];
+            if (diff.operation == 0) {
+              if (!diff.text.endsWith(' ')) {
+                final a =
+                    diff.text.split(' ').last + diffs[i].text.split(' ').first;
+                commonWords.add(diff.text.split(' ').last);
+                commonText = commonText + a;
+              } else {
+                commonText = commonText + diffs[i].text;
+              }
+              break;
+            }
+          }
+        }
+        // tien toi 0
+        final endText = diffs[i].text.endsWith(' ');
+        if (endText) break;
+        for (int j = i; j < diffs.length; j++) {
+          final index = j + 1;
+          if (index < diffs.length) {
+            final diff = diffs[index];
+            if (diff.operation == 0) {
+              if (diff.text.startsWith(' ')) {
+                commonText = commonText + diff.text.split(' ').first;
+              } else {
+                commonText = commonText + diffs[i].text;
+              }
+              break;
+            }
+          }
+        }
+      }
+      if (commonText.isNotEmpty) commonWords.add(commonText);
     }
 
-    final newCommonWords = List<Diff>.empty(growable: true);
+    final firstLine =
+        beautifullTextSpans(oldText, commonWords, deletedTextStyle);
 
-    commonWords.forEach((element) {
-      final list = element.text.split(' ');
-      if (list.length == 1) {
-        newCommonWords.add(element);
-      } else {
-        list.forEach((e) {
-          if (e.isNotEmpty) newCommonWords.add(Diff(element.operation, e));
-        });
-      }
-    });
-
-    final firstLine = beautifullTextSpans(
-      oldText,
-      newCommonWords,
-      deletedTextStyle,
-    );
-
-    final secondLine = beautifullTextSpans(
-      newText,
-      newCommonWords,
-      addedTextStyle,
-    );
+    final secondLine =
+        beautifullTextSpans(newText, commonWords, addedTextStyle);
 
     return displayType == DisplayType.INLINE
         ? Column(
@@ -266,7 +364,7 @@ class PrettyDiffText extends StatelessWidget {
   }
 
   List<TextSpan> beautifullTextSpans(
-      String text, List<Diff> commonWords, TextStyle style) {
+      String text, List<String> commonWords, TextStyle style) {
     final textSpans = List<TextSpan>.empty(growable: true);
     final data = text.split(' ');
 
@@ -274,7 +372,7 @@ class PrettyDiffText extends StatelessWidget {
       var add = false;
       if (data[i].length > 1) {
         for (int j = 0; j < commonWords.length; j++) {
-          final dataContains = data[i] == commonWords[j].text;
+          final dataContains = data[i] == commonWords[j];
           // final wordContains = commonWords[j].text.contains(data[i]);
           // log('$j ${data[i]} ${commonWords[j].text} $dataContains');
 

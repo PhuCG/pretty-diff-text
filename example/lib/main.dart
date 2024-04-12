@@ -42,10 +42,10 @@ class _MyHomePageState extends State<MyHomePage> {
     _diffTimeoutEditingController = TextEditingController();
     _editCostEditingController = TextEditingController();
     _oldTextEditingController.text =
-        "She don't know how to swim and neither can her brother.";
+        "He go often to the gym in Monday and Thursday for workout.";
 
     _newTextEditingController.text =
-        "She doesn't know how to swim and neither does her brother.";
+        "He often goes to the gym on Mondays and Thursdays to work out.";
 
     _diffTimeoutEditingController.text = "1.0";
     _editCostEditingController.text = "4";
