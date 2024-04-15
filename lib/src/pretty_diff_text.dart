@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:diff_match_patch/diff_match_patch.dart';
 import 'package:flutter/material.dart';
 import 'package:pretty_diff_text/src/diff_cleanup_type.dart';
@@ -87,186 +85,169 @@ class PrettyDiffText extends StatelessWidget {
   Widget build(BuildContext context) {
     DiffMatchPatch dmp = DiffMatchPatch();
     dmp.diffTimeout = diffTimeout;
-
     List<Diff> diffs = dmp.diff(oldText, newText, false);
-    int levenshteinDistance = dmp.diff_levenshtein(diffs);
-    dmp.diffEditCost = levenshteinDistance;
+    dmp.diffEditCost = diffEditCost;
     cleanupDiffs(dmp, diffs);
 
-    final textSpans0 = List<TextSpan>.empty(growable: true);
-    final textSpans1 = List<TextSpan>.empty(growable: true);
-    final textSpans11 = List<TextSpan>.empty(growable: true);
+    final textSpans_delete = List<TextSpan>.empty(growable: true);
+    final textSpans_add = List<TextSpan>.empty(growable: true);
 
-    final textSpan = List<String>.empty(growable: true);
+    List<TextSpan> merge_diff(Diff diff, TextStyle style) {
+      final index = diffs.indexOf(diff);
+      final ended = diff.text.endsWith(' ');
+      final textSpan = <TextSpan>[];
 
-    //with 1 and -1
-    String detected_word(String character, index) {
-      var word = '';
+      var nStyle = defaultTextStyle;
+      if (diff.operation == -1 || diff.operation == 1) nStyle = style;
 
-      // Special case " "
-      // Example workout -> work out
-      if (character.trim().isEmpty) {
-        for (int j = index - 1; j > -1; j--) {
-          final diff = diffs[j];
-          if (diff.operation == 0) {
-            if (!diff.text.endsWith(' ')) {
-              word = diff.text.split(' ').last + character;
-            }
-            break;
-          }
-        }
-
-        for (int j = index + 1; j < diffs.length; j++) {
-          final diff = diffs[j];
-          if (diff.operation == 0) {
-            if (!diff.text.startsWith(' ')) {
-              if (word.isEmpty) word = character;
-              word = word + diff.text.split(' ').first;
-            }
-            break;
-          }
-        }
-        // add word without space
-        textSpan.add(word.replaceAll(" ", ''));
-        return word;
-      }
-
-      // kiem tra lui
-      var startWord = '';
-      final started = character.startsWith(' ');
-      if (!started) {
-        // ko khoảng trắng ở đầu
-        for (int j = index - 1; j > -1; j--) {
-          final diff = diffs[j];
-          if (diff.operation == 0) {
-            if (!diff.text.endsWith(' ')) {
-              // Special case with 's'
-              final firstCharacter = character.split(' ').first;
-              if (firstCharacter == 's') {
-                textSpan.add(diff.text.split(' ').last);
+      if (ended) {
+        if (index == 0) {
+          textSpan.add(TextSpan(text: diff.text, style: nStyle));
+        } else {
+          final nIndex = index - 1;
+          final nDiff = diffs[nIndex];
+          final nEnded = nDiff.text.endsWith(' ');
+          if (nEnded) {
+            textSpan.add(TextSpan(text: diff.text, style: nStyle));
+          } else {
+            final currentDiffs = diff.text.split(" ");
+            textSpan.add(TextSpan(text: currentDiffs.first, style: style));
+            if (currentDiffs.length > 1) {
+              for (int i = 1; i < currentDiffs.length; i++) {
+                textSpan.add(TextSpan(text: " ", style: nStyle));
+                textSpan.add(TextSpan(text: currentDiffs[i], style: nStyle));
               }
-              // kha nang
-              word = diff.text.split(' ').last + character;
-              startWord = diff.text.split(' ').last;
             }
-            break;
           }
         }
-      }
 
-      var endWord = '';
-      final ended = character.endsWith(' ');
-      if (!ended) {
-        // ko khoảng trắng ở cuối
-        for (int j = index + 1; j < diffs.length; j++) {
-          final diff = diffs[j];
-          if (diff.operation == 0) {
-            if (!diff.text.startsWith(' ')) {
-              // kha nang
-              if (word.isEmpty) word = character;
-              word = word + diff.text.split(' ').first;
-              endWord = diff.text.split(' ').first;
+        return textSpan;
+      } else {
+        if (index == diffs.length - 1) {
+          final currentDiffs = diff.text.split(" ");
+          if (currentDiffs.length > 1) {
+            var j = 0;
+            if (index != 0) {
+              final pIndex = index - 1;
+              final pDiff = diffs[pIndex];
+              final pEnded = pDiff.text.endsWith(' ');
+              if (pEnded == false) {
+                j = 1;
+                textSpan.add(TextSpan(text: currentDiffs.first, style: style));
+                textSpan.add(TextSpan(text: " ", style: nStyle));
+              }
             }
-
-            break;
+            for (int i = j; i < currentDiffs.length - 1; i++) {
+              textSpan.add(TextSpan(text: currentDiffs[i], style: nStyle));
+              textSpan.add(TextSpan(text: " ", style: nStyle));
+            }
+          }
+          textSpan.add(TextSpan(text: currentDiffs.last, style: nStyle));
+        } else {
+          final nIndex = index + 1;
+          final nDiff = diffs[nIndex];
+          final nStarted = nDiff.text.startsWith(' ');
+          if (nStarted) {
+            final currentDiffs = diff.text.split(" ");
+            if (currentDiffs.length > 1) {
+              var j = 0;
+              if (index != 0) {
+                final pIndex = index - 1;
+                final pDiff = diffs[pIndex];
+                final pEnded = pDiff.text.endsWith(' ');
+                if (pEnded == false) {
+                  j = 1;
+                  textSpan
+                      .add(TextSpan(text: currentDiffs.first, style: style));
+                  textSpan.add(TextSpan(text: " ", style: nStyle));
+                }
+              }
+              for (int i = j; i < currentDiffs.length - 1; i++) {
+                textSpan.add(TextSpan(text: currentDiffs[i], style: nStyle));
+                textSpan.add(TextSpan(text: " ", style: nStyle));
+              }
+            }
+            textSpan.add(TextSpan(text: diff.text, style: nStyle));
+          } else {
+            final currentDiffs = diff.text.split(" ");
+            if (currentDiffs.length > 1) {
+              var j = 0;
+              if (index != 0) {
+                final pIndex = index - 1;
+                final pDiff = diffs[pIndex];
+                final pEnded = pDiff.text.endsWith(' ');
+                if (pEnded == false) {
+                  j = 1;
+                  textSpan
+                      .add(TextSpan(text: currentDiffs.first, style: style));
+                  textSpan.add(TextSpan(text: " ", style: nStyle));
+                }
+              }
+              for (int i = j; i < currentDiffs.length - 1; i++) {
+                textSpan.add(TextSpan(text: currentDiffs[i], style: nStyle));
+                textSpan.add(TextSpan(text: " ", style: nStyle));
+              }
+            }
+            textSpan.add(TextSpan(text: currentDiffs.last, style: style));
           }
         }
-      }
 
-      if (word.isEmpty) return character;
-      if (startWord.isNotEmpty && endWord.isNotEmpty) {
-        final newWord = startWord + endWord;
-        textSpan.add(newWord);
+        return textSpan;
       }
-      return word;
     }
 
-    diffs.forEach((element) {
-      textSpans0.add(TextSpan(
-          text: element.text, style: getTextStyleByDiffOperation(element)));
+    for (int index = 0; index < diffs.length; index++) {
+      final diff = diffs[index];
+      if (diff.operation == -1) continue;
 
-      switch (element.operation) {
-        case DIFF_INSERT:
-          final index = diffs.indexOf(element);
-          final word = detected_word(element.text, index);
-          textSpan.add(word);
-          textSpans1.add(TextSpan(text: element.text, style: addedTextStyle));
+      textSpans_add.addAll(merge_diff(diff, addedTextStyle));
+    }
 
-        case DIFF_DELETE:
-          final index = diffs.indexOf(element);
-          final word = detected_word(element.text, index);
-          textSpan.add(word);
-          textSpans11
-              .add(TextSpan(text: element.text, style: deletedTextStyle));
+    for (int index = 0; index < diffs.length; index++) {
+      final diff = diffs[index];
+      if (diff.operation == 1) continue;
+      textSpans_delete.addAll(merge_diff(diff, deletedTextStyle));
+    }
 
-        case DIFF_EQUAL:
-          textSpans11.add(TextSpan(text: element.text));
-          textSpans1.add(TextSpan(text: element.text));
-      }
-    });
-
-    log(textSpan.toString());
-
-    return displayType == DisplayType.INLINE
-        ? Column(
-            children: [
-              RichText(
-                text: TextSpan(
-                  text: '',
-                  style: this.defaultTextStyle,
-                  children: textSpans0,
-                ),
-                textAlign: this.textAlign,
-                textDirection: this.textDirection,
-                softWrap: this.softWrap,
-                overflow: this.overflow,
-                maxLines: this.maxLines,
-                textScaler: TextScaler.linear(this.textScaleFactor),
-                locale: this.locale,
-                strutStyle: this.strutStyle,
-                textWidthBasis: this.textWidthBasis,
-                textHeightBehavior: this.textHeightBehavior,
-              ),
-            ],
-          )
-        : Column(
-            children: [
-              RichText(
-                text: TextSpan(
-                  text: '',
-                  style: this.defaultTextStyle,
-                  children: textSpans11,
-                ),
-                textAlign: this.textAlign,
-                textDirection: this.textDirection,
-                softWrap: this.softWrap,
-                overflow: this.overflow,
-                maxLines: this.maxLines,
-                textScaler: TextScaler.linear(this.textScaleFactor),
-                locale: this.locale,
-                strutStyle: this.strutStyle,
-                textWidthBasis: this.textWidthBasis,
-                textHeightBehavior: this.textHeightBehavior,
-              ),
-              RichText(
-                text: TextSpan(
-                  text: '',
-                  style: this.defaultTextStyle,
-                  children: textSpans1,
-                ),
-                textAlign: this.textAlign,
-                textDirection: this.textDirection,
-                softWrap: this.softWrap,
-                overflow: this.overflow,
-                maxLines: this.maxLines,
-                textScaler: TextScaler.linear(this.textScaleFactor),
-                locale: this.locale,
-                strutStyle: this.strutStyle,
-                textWidthBasis: this.textWidthBasis,
-                textHeightBehavior: this.textHeightBehavior,
-              ),
-            ],
-          );
+    return Column(
+      children: [
+        RichText(
+          text: TextSpan(
+            text: '',
+            style: this.defaultTextStyle,
+            children: textSpans_delete,
+          ),
+          textAlign: this.textAlign,
+          textDirection: this.textDirection,
+          softWrap: this.softWrap,
+          overflow: this.overflow,
+          maxLines: this.maxLines,
+          textScaler: TextScaler.linear(this.textScaleFactor),
+          locale: this.locale,
+          strutStyle: this.strutStyle,
+          textWidthBasis: this.textWidthBasis,
+          textHeightBehavior: this.textHeightBehavior,
+        ),
+        SizedBox(height: 12),
+        RichText(
+          text: TextSpan(
+            text: '',
+            style: this.defaultTextStyle,
+            children: textSpans_add,
+          ),
+          textAlign: this.textAlign,
+          textDirection: this.textDirection,
+          softWrap: this.softWrap,
+          overflow: this.overflow,
+          maxLines: this.maxLines,
+          textScaler: TextScaler.linear(this.textScaleFactor),
+          locale: this.locale,
+          strutStyle: this.strutStyle,
+          textWidthBasis: this.textWidthBasis,
+          textHeightBehavior: this.textHeightBehavior,
+        ),
+      ],
+    );
   }
 
   TextStyle getTextStyleByDiffOperation(Diff diff) {
@@ -300,12 +281,4 @@ class PrettyDiffText extends StatelessWidget {
         throw "Unknown DiffCleanupType. DiffCleanupType should be one of: [SEMANTIC], [EFFICIENCY] or [NONE].";
     }
   }
-}
-
-class TextData {
-  // final TextSpan textSpan;
-  final String textSpan;
-  final int index;
-
-  TextData(this.textSpan, this.index);
 }

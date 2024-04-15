@@ -32,7 +32,6 @@ class _MyHomePageState extends State<MyHomePage> {
   late final TextEditingController _oldTextEditingController;
   late final TextEditingController _newTextEditingController;
   late final TextEditingController _diffTimeoutEditingController;
-  late final TextEditingController _editCostEditingController;
   DiffCleanupType? _diffCleanupType = DiffCleanupType.EFFICIENCY;
 
   @override
@@ -40,7 +39,6 @@ class _MyHomePageState extends State<MyHomePage> {
     _oldTextEditingController = TextEditingController();
     _newTextEditingController = TextEditingController();
     _diffTimeoutEditingController = TextEditingController();
-    _editCostEditingController = TextEditingController();
     _oldTextEditingController.text =
         "He go to school everyday for study his lessons and he always forgetting his books and he watches too much TV's every night";
 
@@ -48,7 +46,6 @@ class _MyHomePageState extends State<MyHomePage> {
         "He goes to school every day to study his lessons, and he always forgets his books and watches too much TV every night.";
 
     _diffTimeoutEditingController.text = "1.0";
-    _editCostEditingController.text = "4";
     super.initState();
   }
 
@@ -122,45 +119,6 @@ class _MyHomePageState extends State<MyHomePage> {
                         child: Padding(
                           padding: const EdgeInsets.only(bottom: 10),
                           child: Text(
-                            "--- PrettyDiffText INLINE ---",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                      Center(
-                        child: PrettyDiffText(
-                          textAlign: TextAlign.center,
-                          oldText: _oldTextEditingController.text,
-                          newText: _newTextEditingController.text,
-                          diffCleanupType:
-                              _diffCleanupType ?? DiffCleanupType.SEMANTIC,
-                          diffTimeout: diffTimeoutToDouble(),
-                          diffEditCost: editCostToDouble(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.all(
-                    Radius.circular(10),
-                  ),
-                ),
-                margin: EdgeInsets.only(top: 8),
-                child: Padding(
-                  padding: const EdgeInsets.all(10.0),
-                  child: Column(
-                    children: [
-                      Center(
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Text(
                             "--- PrettyDiffText COMPARE ---",
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
@@ -174,7 +132,6 @@ class _MyHomePageState extends State<MyHomePage> {
                         diffCleanupType:
                             _diffCleanupType ?? DiffCleanupType.SEMANTIC,
                         diffTimeout: diffTimeoutToDouble(),
-                        diffEditCost: editCostToDouble(),
                       ),
                     ],
                   ),
@@ -198,20 +155,6 @@ class _MyHomePageState extends State<MyHomePage> {
             content: Text("Enter a valid double value for edit cost")));
       });
       return 1.0; // default value for timeout
-    }
-  }
-
-  int editCostToDouble() {
-    try {
-      final response = int.parse(_editCostEditingController.text);
-      ScaffoldMessenger.of(context).clearSnackBars();
-      return response;
-    } catch (e) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text("Enter a valid integer value for edit cost")));
-      });
-      return 4; // default value for edit cost
     }
   }
 }
