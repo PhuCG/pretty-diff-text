@@ -40,8 +40,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _newTextEditingController = TextEditingController();
     _diffTimeoutEditingController = TextEditingController();
     _oldTextEditingController.text =
-        "He go to school everyday for study his lessons and he always forgetting his books and he watches too much TV's every night";
-
+        "He go to school everyday for study his lessons and he always forgetting his books and he watches too much TV's every night.";
     _newTextEditingController.text =
         "He goes to school every day to study his lessons, and he always forgets his books and watches too much TV every night.";
 

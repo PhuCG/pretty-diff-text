@@ -1,5 +1,10 @@
+import 'dart:developer';
+import 'dart:ui';
+
 import 'package:diff_match_patch/diff_match_patch.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart';
 import 'package:pretty_diff_text/src/diff_cleanup_type.dart';
 
 class PrettyDiffText extends StatelessWidget {
@@ -63,7 +68,6 @@ class PrettyDiffText extends StatelessWidget {
     this.deletedTextStyle = const TextStyle(
       color: Colors.red,
       backgroundColor: Color.fromARGB(255, 253, 183, 183),
-      decoration: TextDecoration.lineThrough,
     ),
     this.diffTimeout = 1.0,
     this.diffCleanupType = DiffCleanupType.SEMANTIC,
@@ -86,7 +90,7 @@ class PrettyDiffText extends StatelessWidget {
     DiffMatchPatch dmp = DiffMatchPatch();
     dmp.diffTimeout = diffTimeout;
     List<Diff> diffs = dmp.diff(oldText, newText, false);
-    dmp.diffEditCost = diffEditCost;
+
     cleanupDiffs(dmp, diffs);
 
     final textSpans_delete = List<TextSpan>.empty(growable: true);
@@ -104,10 +108,10 @@ class PrettyDiffText extends StatelessWidget {
         if (index == 0) {
           textSpan.add(TextSpan(text: diff.text, style: nStyle));
         } else {
-          final nIndex = index - 1;
-          final nDiff = diffs[nIndex];
-          final nEnded = nDiff.text.endsWith(' ');
-          if (nEnded) {
+          final pIndex = index - 1;
+          final pDiff = diffs[pIndex];
+          final pEnded = pDiff.text.endsWith(' ');
+          if (pEnded && pDiff.text.trim().length > 1) {
             textSpan.add(TextSpan(text: diff.text, style: nStyle));
           } else {
             final currentDiffs = diff.text.split(" ");
@@ -147,7 +151,7 @@ class PrettyDiffText extends StatelessWidget {
           final nIndex = index + 1;
           final nDiff = diffs[nIndex];
           final nStarted = nDiff.text.startsWith(' ');
-          if (nStarted) {
+          if (nStarted && nDiff.text.trim().length > 1) {
             final currentDiffs = diff.text.split(" ");
             if (currentDiffs.length > 1) {
               var j = 0;
@@ -199,7 +203,6 @@ class PrettyDiffText extends StatelessWidget {
     for (int index = 0; index < diffs.length; index++) {
       final diff = diffs[index];
       if (diff.operation == -1) continue;
-
       textSpans_add.addAll(merge_diff(diff, addedTextStyle));
     }
 
@@ -209,13 +212,76 @@ class PrettyDiffText extends StatelessWidget {
       textSpans_delete.addAll(merge_diff(diff, deletedTextStyle));
     }
 
+    TextMerge find_TextSpan(
+      List<TextSpan> textSpans,
+      int index,
+    ) {
+      final textSpan = textSpans[index];
+      final item =
+          TextMerge(text: textSpan.text, index: index, style: textSpan.style);
+      if (index > textSpans.length - 2) return item;
+      final nTextSpan = textSpans[index + 1];
+      if (textSpan.style != nTextSpan.style) return item;
+      final next = find_TextSpan(textSpans, index + 1);
+      final newData = TextMerge(
+        text: '${textSpan.text}${next.text}',
+        index: next.index,
+        style: next.style,
+      );
+      return newData;
+    }
+
+    List<TextSpan> merge_textspan(List<TextSpan> data) {
+      final textSpans = <TextSpan>[];
+      for (int i = 0; i < data.length; i++) {
+        final textSpan = find_TextSpan(data, i);
+        textSpans.add(TextSpan(text: textSpan.text, style: textSpan.style));
+        i = textSpan.index;
+      }
+      return textSpans;
+    }
+
+    final textSpans_add_merge = merge_textspan(textSpans_add);
+    final textSpans_delete_merge = merge_textspan(textSpans_delete);
+
+    final textSpans = List<TextSpan>.empty(growable: true);
+
+    diffs.forEach((element) {
+      textSpans.add(TextSpan(
+          text: element.text, style: getTextStyleByDiffOperation(element)));
+    });
+
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
+        Text('In line by word', style: TextStyle(fontWeight: FontWeight.bold)),
+        SizedBox(height: 8),
         RichText(
           text: TextSpan(
             text: '',
             style: this.defaultTextStyle,
-            children: textSpans_delete,
+            children: textSpans,
+          ),
+          textAlign: this.textAlign,
+          textDirection: this.textDirection,
+          softWrap: this.softWrap,
+          overflow: this.overflow,
+          maxLines: this.maxLines,
+          textScaler: TextScaler.linear(this.textScaleFactor),
+          locale: this.locale,
+          strutStyle: this.strutStyle,
+          textWidthBasis: this.textWidthBasis,
+          textHeightBehavior: this.textHeightBehavior,
+        ),
+        SizedBox(height: 12),
+        Text('Compare line by word',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        SizedBox(height: 8),
+        RichText(
+          text: TextSpan(
+            text: '',
+            style: this.defaultTextStyle,
+            children: textSpans_delete_merge,
           ),
           textAlign: this.textAlign,
           textDirection: this.textDirection,
@@ -233,7 +299,7 @@ class PrettyDiffText extends StatelessWidget {
           text: TextSpan(
             text: '',
             style: this.defaultTextStyle,
-            children: textSpans_add,
+            children: textSpans_add_merge,
           ),
           textAlign: this.textAlign,
           textDirection: this.textDirection,
@@ -281,4 +347,12 @@ class PrettyDiffText extends StatelessWidget {
         throw "Unknown DiffCleanupType. DiffCleanupType should be one of: [SEMANTIC], [EFFICIENCY] or [NONE].";
     }
   }
+}
+
+class TextMerge {
+  final int index;
+  String? text;
+  TextStyle? style;
+
+  TextMerge({this.text, this.style, required this.index});
 }
