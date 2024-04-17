@@ -32,7 +32,7 @@ class _MyHomePageState extends State<MyHomePage> {
   late final TextEditingController _oldTextEditingController;
   late final TextEditingController _newTextEditingController;
   late final TextEditingController _diffTimeoutEditingController;
-  DiffCleanupType? _diffCleanupType = DiffCleanupType.EFFICIENCY;
+  DiffType _diffType = DiffType.WORD;
 
   @override
   void initState() {
@@ -40,9 +40,9 @@ class _MyHomePageState extends State<MyHomePage> {
     _newTextEditingController = TextEditingController();
     _diffTimeoutEditingController = TextEditingController();
     _oldTextEditingController.text =
-        "He go to school everyday for study his lessons and he always forgetting his books and he watches too much TV's every night.";
+        "She not only is responsible to managing the team, but also she take care of client interactions.";
     _newTextEditingController.text =
-        "He goes to school every day to study his lessons, and he always forgets his books and watches too much TV every night.";
+        "She is not only responsible for managing the team, but she also takes care of client interactions.";
 
     _diffTimeoutEditingController.text = "1.0";
     super.initState();
@@ -112,31 +112,35 @@ class _MyHomePageState extends State<MyHomePage> {
                 margin: EdgeInsets.only(top: 8),
                 child: Padding(
                   padding: const EdgeInsets.all(10.0),
-                  child: Column(
-                    children: [
-                      Center(
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Text(
-                            "--- PrettyDiffText COMPARE ---",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                      PrettyDiffText(
-                        displayType: DisplayType.COMPARE,
-                        textAlign: TextAlign.left,
-                        oldText: _oldTextEditingController.text,
-                        newText: _newTextEditingController.text,
-                        diffCleanupType:
-                            _diffCleanupType ?? DiffCleanupType.SEMANTIC,
-                        diffTimeout: diffTimeoutToDouble(),
-                      ),
-                    ],
+                  child: PrettyDiffText(
+                    displayType: DisplayType.COMPARE,
+                    textAlign: TextAlign.left,
+                    oldText: _oldTextEditingController.text,
+                    newText: _newTextEditingController.text,
+                    diffCleanupType: DiffCleanupType.SEMANTIC,
+                    diffType: _diffType,
+                    diffTimeout: diffTimeoutToDouble(),
                   ),
                 ),
               ),
             ),
+            SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  if (_diffType == DiffType.WORD) {
+                    _diffType = DiffType.CHARACTER;
+                  } else {
+                    _diffType = DiffType.WORD;
+                  }
+                });
+              },
+              child: Text(
+                _diffType == DiffType.WORD
+                    ? 'Diff by character'.toUpperCase()
+                    : 'Diff by word'.toUpperCase(),
+              ),
+            )
           ],
         ),
       ),

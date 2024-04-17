@@ -30,6 +30,7 @@ class PrettyDiffText extends StatelessWidget {
   final double diffTimeout;
 
   final DisplayType displayType;
+  final DiffType diffType;
 
   /// Cost of an empty edit operation in terms of edit characters.
   /// This value is used when [DiffCleanupType] is selected as [DiffCleanupType.EFFICIENCY]
@@ -76,6 +77,7 @@ class PrettyDiffText extends StatelessWidget {
     this.locale,
     this.strutStyle,
     this.displayType = DisplayType.INLINE,
+    this.diffType = DiffType.CHARACTER,
     this.textWidthBasis = TextWidthBasis.parent,
     this.textHeightBehavior,
   }) : super(key: key);
@@ -85,166 +87,66 @@ class PrettyDiffText extends StatelessWidget {
     DiffMatchPatch dmp = DiffMatchPatch();
     dmp.diffTimeout = diffTimeout;
     List<Diff> diffs = dmp.diff(oldText, newText, false);
-
     cleanupDiffs(dmp, diffs);
 
-    final newDiffs = List<Diff>.empty(growable: true);
-
-    for (int i = 0; i < diffs.length; i++) {
-      final cdiff = diffs[i];
-      final length = cdiff.text.trim().length;
-
-      final stated = cdiff.text.startsWith(' ');
-      final ended = cdiff.text.endsWith(' ');
-
-      if (length == 0 || stated && ended) {
-        // just Space " "
-        newDiffs.add(cdiff);
-      } else {
-        final started = cdiff.text.indexOf(' ');
-        if (started != -1) {
-          List<String> parts = cdiff.text.split(' ');
-
-          if (parts.length > 1) {
-            String first = parts.first;
-            if (first.isNotEmpty) {
-              if (parts.last.isEmpty) first += " ";
-              newDiffs.add(Diff(cdiff.operation, first));
-            }
-
-            if (parts.length > 2) {
-              String middle =
-                  ' ' + parts.sublist(1, parts.length - 1).join(' ');
-              if (parts.last.isEmpty) middle += " ";
-              newDiffs.add(Diff(cdiff.operation, middle));
-            }
-            if (parts.last.isNotEmpty) {
-              String last = ' ' + parts.last;
-              newDiffs.add(Diff(cdiff.operation, last));
-            }
-          } else {
-            newDiffs.add(cdiff);
-          }
-        } else {
-          newDiffs.add(cdiff);
-        }
-      }
+    List<Diff> diffsByType;
+    switch (diffType) {
+      case DiffType.CHARACTER:
+        diffsByType = diffs;
+      case DiffType.WORD:
+        diffsByType = diffByWord(diffs);
     }
 
-    final newWords = List<Diff>.empty(growable: true);
+    final inLineText = List<TextSpan>.empty(growable: true);
+    final addLine = List<TextSpan>.empty(growable: true);
+    final deleteLine = List<TextSpan>.empty(growable: true);
 
-    List<Diff> mergeCharater(List<Diff> diffs) {
-      final aBuffer = StringBuffer('');
-      final dBuffer = StringBuffer('');
-
-      for (int i = 0; i < diffs.length; i++) {
-        final cdiff = diffs[i];
-        if (cdiff.operation == 0) {
-          aBuffer.write(cdiff.text);
-          dBuffer.write(cdiff.text);
-        }
-        if (cdiff.operation == 1) aBuffer.write(cdiff.text);
-        if (cdiff.operation == -1) dBuffer.write(cdiff.text);
-      }
-      final dDiff = Diff(-1, '$dBuffer');
-      final aDiff = Diff(1, '$aBuffer');
-      return [dDiff, aDiff];
-    }
-
-    for (int j = 0; j < newDiffs.length; j++) {
-      var addDiffs = <Diff>[];
-      final cdiff = newDiffs[j];
-      if (cdiff.text.endsWith(' ')) {
-        newWords.add(cdiff);
-      } else {
-        var nIndex = j + 1;
-        if (nIndex < newDiffs.length) {
-          final nDiff = newDiffs[nIndex];
-          if (nDiff.text.startsWith(' ')) {
-            newWords.add(cdiff);
-          } else {
-            addDiffs.add(cdiff);
-            while (true) {
-              if (nIndex < newDiffs.length) {
-                final nDiff = newDiffs[nIndex];
-                if (nDiff.text.startsWith(' ')) break;
-                addDiffs.add(nDiff);
-                nIndex++;
-              } else {
-                break;
-              }
-            }
-            newWords.addAll(mergeCharater(addDiffs));
-            j = nIndex - 1;
-          }
-        } else {
-          //Todo Last with first space
-          newWords.add(cdiff);
-        }
-      }
-    }
-
-    final textSpans = List<TextSpan>.empty(growable: true);
-    final textSpans_add_merge = List<TextSpan>.empty(growable: true);
-    final textSpans_delete_merge = List<TextSpan>.empty(growable: true);
-    newWords.forEach((cdiff) {
-      textSpans.add(
+    diffsByType.forEach((cdiff) {
+      inLineText.add(
         TextSpan(text: cdiff.text, style: getTextStyleByDiffOperation(cdiff)),
       );
-
       if (cdiff.operation == 0) {
-        textSpans_add_merge.add(TextSpan(
-          text: cdiff.text,
-          style: defaultTextStyle,
-        ));
-        textSpans_delete_merge.add(TextSpan(
-          text: cdiff.text,
-          style: defaultTextStyle,
-        ));
+        addLine.add(TextSpan(text: cdiff.text, style: defaultTextStyle));
+        deleteLine.add(TextSpan(text: cdiff.text, style: defaultTextStyle));
       }
       if (cdiff.operation == 1)
-        textSpans_add_merge.add(TextSpan(
-          text: cdiff.text,
-          style: addedTextStyle,
-        ));
+        addLine.add(TextSpan(text: cdiff.text, style: addedTextStyle));
       if (cdiff.operation == -1)
-        textSpans_delete_merge.add(TextSpan(
-          text: cdiff.text,
-          style: deletedTextStyle,
-        ));
+        deleteLine.add(TextSpan(text: cdiff.text, style: deletedTextStyle));
     });
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('In line by word', style: TextStyle(fontWeight: FontWeight.bold)),
-        SizedBox(height: 8),
-        RichText(
-          text: TextSpan(
-            text: '',
-            style: this.defaultTextStyle,
-            children: textSpans,
-          ),
-          textAlign: this.textAlign,
-          textDirection: this.textDirection,
-          softWrap: this.softWrap,
-          overflow: this.overflow,
-          maxLines: this.maxLines,
-          textScaler: TextScaler.linear(this.textScaleFactor),
-          locale: this.locale,
-          strutStyle: this.strutStyle,
-          textWidthBasis: this.textWidthBasis,
-          textHeightBehavior: this.textHeightBehavior,
-        ),
-        SizedBox(height: 12),
-        Text('Compare line by word',
+        Text('In line by ${diffType.name}',
             style: TextStyle(fontWeight: FontWeight.bold)),
         SizedBox(height: 8),
         RichText(
           text: TextSpan(
             text: '',
             style: this.defaultTextStyle,
-            children: textSpans_delete_merge,
+            children: inLineText,
+          ),
+          textAlign: this.textAlign,
+          textDirection: this.textDirection,
+          softWrap: this.softWrap,
+          overflow: this.overflow,
+          maxLines: this.maxLines,
+          textScaler: TextScaler.linear(this.textScaleFactor),
+          locale: this.locale,
+          strutStyle: this.strutStyle,
+          textWidthBasis: this.textWidthBasis,
+          textHeightBehavior: this.textHeightBehavior,
+        ),
+        SizedBox(height: 12),
+        Text('Compare line by ${diffType.name}',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        SizedBox(height: 8),
+        RichText(
+          text: TextSpan(
+            text: '',
+            style: this.defaultTextStyle,
+            children: deleteLine,
           ),
           textAlign: this.textAlign,
           textDirection: this.textDirection,
@@ -262,7 +164,7 @@ class PrettyDiffText extends StatelessWidget {
           text: TextSpan(
             text: '',
             style: this.defaultTextStyle,
-            children: textSpans_add_merge,
+            children: addLine,
           ),
           textAlign: this.textAlign,
           textDirection: this.textDirection,
@@ -309,5 +211,113 @@ class PrettyDiffText extends StatelessWidget {
       default:
         throw "Unknown DiffCleanupType. DiffCleanupType should be one of: [SEMANTIC], [EFFICIENCY] or [NONE].";
     }
+  }
+
+  List<Diff> diffByWord(List<Diff> diffs) {
+    final diffs_part = List<Diff>.empty(growable: true);
+
+    for (int i = 0; i < diffs.length; i++) {
+      final cdiff = diffs[i];
+      final length = cdiff.text.trim().length;
+
+      final stated = cdiff.text.startsWith(' ');
+      final ended = cdiff.text.endsWith(' ');
+
+      if (length == 0 || stated && ended) {
+        // just Space " "
+        diffs_part.add(cdiff);
+      } else {
+        final started = cdiff.text.indexOf(' ');
+        if (started != -1) {
+          List<String> strings = cdiff.text.trim().split(' ');
+          if (strings.length > 1) {
+            List<String> parts = cdiff.text.split(' ');
+            final a = cdiff.text.indexOf(' ');
+            final b = cdiff.text.lastIndexOf(' ');
+            if (parts.length <= 2) {
+              String first = cdiff.text.substring(0, a + 1);
+              if (first.isNotEmpty) {
+                diffs_part.add(Diff(cdiff.operation, first));
+              }
+              if (parts.last.isNotEmpty) {
+                String last = cdiff.text.substring(a + 1, cdiff.text.length);
+                diffs_part.add(Diff(cdiff.operation, last));
+              }
+            } else {
+              String first = cdiff.text.substring(0, a);
+              if (first.isNotEmpty) {
+                diffs_part.add(Diff(cdiff.operation, first));
+              }
+              if (a != b) {
+                String middle = cdiff.text.substring(a, b + 1);
+                diffs_part.add(Diff(cdiff.operation, middle));
+              }
+              if (parts.last.isNotEmpty) {
+                String last = cdiff.text.substring(b + 1, cdiff.text.length);
+                diffs_part.add(Diff(cdiff.operation, last));
+              }
+            }
+          } else {
+            diffs_part.add(cdiff);
+          }
+        } else {
+          diffs_part.add(cdiff);
+        }
+      }
+    }
+
+    final diffByWords = List<Diff>.empty(growable: true);
+
+    List<Diff> mergeCharater(List<Diff> diffs) {
+      final addWord = StringBuffer('');
+      final deleteWord = StringBuffer('');
+
+      for (int i = 0; i < diffs.length; i++) {
+        final cdiff = diffs[i];
+        if (cdiff.operation == 0) {
+          addWord.write(cdiff.text);
+          deleteWord.write(cdiff.text);
+        }
+        if (cdiff.operation == 1) addWord.write(cdiff.text);
+        if (cdiff.operation == -1) deleteWord.write(cdiff.text);
+      }
+      final dDiff = Diff(-1, '$deleteWord');
+      final aDiff = Diff(1, '$addWord');
+      return [dDiff, aDiff];
+    }
+
+    for (int j = 0; j < diffs_part.length; j++) {
+      var addDiffs = <Diff>[];
+      final cdiff = diffs_part[j];
+      if (cdiff.text.endsWith(' ')) {
+        diffByWords.add(cdiff);
+      } else {
+        var nIndex = j + 1;
+        if (nIndex < diffs_part.length) {
+          final nDiff = diffs_part[nIndex];
+          if (nDiff.text.startsWith(' ')) {
+            diffByWords.add(cdiff);
+          } else {
+            addDiffs.add(cdiff);
+            while (true) {
+              if (nIndex < diffs_part.length) {
+                final nDiff = diffs_part[nIndex];
+                if (nDiff.text.startsWith(' ')) break;
+                addDiffs.add(nDiff);
+                nIndex++;
+                if (nDiff.text.endsWith(' ')) break;
+              } else {
+                break;
+              }
+            }
+            diffByWords.addAll(mergeCharater(addDiffs));
+            j = nIndex - 1;
+          }
+        } else {
+          diffByWords.add(cdiff);
+        }
+      }
+    }
+    return diffByWords;
   }
 }

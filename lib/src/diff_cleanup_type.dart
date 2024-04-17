@@ -11,3 +11,5 @@ enum DiffCleanupType {
 }
 
 enum DisplayType { INLINE, COMPARE }
+
+enum DiffType { CHARACTER, WORD }
