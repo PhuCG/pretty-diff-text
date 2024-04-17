@@ -1,10 +1,5 @@
-import 'dart:developer';
-import 'dart:ui';
-
 import 'package:diff_match_patch/diff_match_patch.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/widgets.dart';
 import 'package:pretty_diff_text/src/diff_cleanup_type.dart';
 
 class PrettyDiffText extends StatelessWidget {
@@ -71,7 +66,7 @@ class PrettyDiffText extends StatelessWidget {
     ),
     this.diffTimeout = 1.0,
     this.diffCleanupType = DiffCleanupType.SEMANTIC,
-    this.diffEditCost = 4,
+    this.diffEditCost = 1,
     this.textAlign = TextAlign.start,
     this.textDirection,
     this.softWrap = true,
@@ -93,162 +88,130 @@ class PrettyDiffText extends StatelessWidget {
 
     cleanupDiffs(dmp, diffs);
 
-    final textSpans_delete = List<TextSpan>.empty(growable: true);
-    final textSpans_add = List<TextSpan>.empty(growable: true);
+    final newDiffs = List<Diff>.empty(growable: true);
 
-    List<TextSpan> merge_diff(Diff diff, TextStyle style) {
-      final index = diffs.indexOf(diff);
-      final ended = diff.text.endsWith(' ');
-      final textSpan = <TextSpan>[];
+    for (int i = 0; i < diffs.length; i++) {
+      final cdiff = diffs[i];
+      final length = cdiff.text.trim().length;
 
-      var nStyle = defaultTextStyle;
-      if (diff.operation == -1 || diff.operation == 1) nStyle = style;
+      final stated = cdiff.text.startsWith(' ');
+      final ended = cdiff.text.endsWith(' ');
 
-      if (ended) {
-        if (index == 0) {
-          textSpan.add(TextSpan(text: diff.text, style: nStyle));
-        } else {
-          final pIndex = index - 1;
-          final pDiff = diffs[pIndex];
-          final pEnded = pDiff.text.endsWith(' ');
-          if (pEnded && pDiff.text.trim().length > 1) {
-            textSpan.add(TextSpan(text: diff.text, style: nStyle));
-          } else {
-            final currentDiffs = diff.text.split(" ");
-            textSpan.add(TextSpan(text: currentDiffs.first, style: style));
-            if (currentDiffs.length > 1) {
-              for (int i = 1; i < currentDiffs.length; i++) {
-                textSpan.add(TextSpan(text: " ", style: nStyle));
-                textSpan.add(TextSpan(text: currentDiffs[i], style: nStyle));
-              }
-            }
-          }
-        }
-
-        return textSpan;
+      if (length == 0 || stated && ended) {
+        // just Space " "
+        newDiffs.add(cdiff);
       } else {
-        if (index == diffs.length - 1) {
-          final currentDiffs = diff.text.split(" ");
-          if (currentDiffs.length > 1) {
-            var j = 0;
-            if (index != 0) {
-              final pIndex = index - 1;
-              final pDiff = diffs[pIndex];
-              final pEnded = pDiff.text.endsWith(' ');
-              if (pEnded == false) {
-                j = 1;
-                textSpan.add(TextSpan(text: currentDiffs.first, style: style));
-                textSpan.add(TextSpan(text: " ", style: nStyle));
-              }
+        final started = cdiff.text.indexOf(' ');
+        if (started != -1) {
+          List<String> parts = cdiff.text.split(' ');
+
+          if (parts.length > 1) {
+            String first = parts.first;
+            if (first.isNotEmpty) {
+              if (parts.last.isEmpty) first += " ";
+              newDiffs.add(Diff(cdiff.operation, first));
             }
-            for (int i = j; i < currentDiffs.length - 1; i++) {
-              textSpan.add(TextSpan(text: currentDiffs[i], style: nStyle));
-              textSpan.add(TextSpan(text: " ", style: nStyle));
+
+            if (parts.length > 2) {
+              String middle =
+                  ' ' + parts.sublist(1, parts.length - 1).join(' ');
+              if (parts.last.isEmpty) middle += " ";
+              newDiffs.add(Diff(cdiff.operation, middle));
             }
-          }
-          textSpan.add(TextSpan(text: currentDiffs.last, style: nStyle));
-        } else {
-          final nIndex = index + 1;
-          final nDiff = diffs[nIndex];
-          final nStarted = nDiff.text.startsWith(' ');
-          if (nStarted && nDiff.text.trim().length > 1) {
-            final currentDiffs = diff.text.split(" ");
-            if (currentDiffs.length > 1) {
-              var j = 0;
-              if (index != 0) {
-                final pIndex = index - 1;
-                final pDiff = diffs[pIndex];
-                final pEnded = pDiff.text.endsWith(' ');
-                if (pEnded == false) {
-                  j = 1;
-                  textSpan
-                      .add(TextSpan(text: currentDiffs.first, style: style));
-                  textSpan.add(TextSpan(text: " ", style: nStyle));
-                }
-              }
-              for (int i = j; i < currentDiffs.length - 1; i++) {
-                textSpan.add(TextSpan(text: currentDiffs[i], style: nStyle));
-                textSpan.add(TextSpan(text: " ", style: nStyle));
-              }
+            if (parts.last.isNotEmpty) {
+              String last = ' ' + parts.last;
+              newDiffs.add(Diff(cdiff.operation, last));
             }
-            textSpan.add(TextSpan(text: diff.text, style: nStyle));
           } else {
-            final currentDiffs = diff.text.split(" ");
-            if (currentDiffs.length > 1) {
-              var j = 0;
-              if (index != 0) {
-                final pIndex = index - 1;
-                final pDiff = diffs[pIndex];
-                final pEnded = pDiff.text.endsWith(' ');
-                if (pEnded == false) {
-                  j = 1;
-                  textSpan
-                      .add(TextSpan(text: currentDiffs.first, style: style));
-                  textSpan.add(TextSpan(text: " ", style: nStyle));
-                }
-              }
-              for (int i = j; i < currentDiffs.length - 1; i++) {
-                textSpan.add(TextSpan(text: currentDiffs[i], style: nStyle));
-                textSpan.add(TextSpan(text: " ", style: nStyle));
+            newDiffs.add(cdiff);
+          }
+        } else {
+          newDiffs.add(cdiff);
+        }
+      }
+    }
+
+    final newWords = List<Diff>.empty(growable: true);
+
+    List<Diff> mergeCharater(List<Diff> diffs) {
+      final aBuffer = StringBuffer('');
+      final dBuffer = StringBuffer('');
+
+      for (int i = 0; i < diffs.length; i++) {
+        final cdiff = diffs[i];
+        if (cdiff.operation == 0) {
+          aBuffer.write(cdiff.text);
+          dBuffer.write(cdiff.text);
+        }
+        if (cdiff.operation == 1) aBuffer.write(cdiff.text);
+        if (cdiff.operation == -1) dBuffer.write(cdiff.text);
+      }
+      final dDiff = Diff(-1, '$dBuffer');
+      final aDiff = Diff(1, '$aBuffer');
+      return [dDiff, aDiff];
+    }
+
+    for (int j = 0; j < newDiffs.length; j++) {
+      var addDiffs = <Diff>[];
+      final cdiff = newDiffs[j];
+      if (cdiff.text.endsWith(' ')) {
+        newWords.add(cdiff);
+      } else {
+        var nIndex = j + 1;
+        if (nIndex < newDiffs.length) {
+          final nDiff = newDiffs[nIndex];
+          if (nDiff.text.startsWith(' ')) {
+            newWords.add(cdiff);
+          } else {
+            addDiffs.add(cdiff);
+            while (true) {
+              if (nIndex < newDiffs.length) {
+                final nDiff = newDiffs[nIndex];
+                if (nDiff.text.startsWith(' ')) break;
+                addDiffs.add(nDiff);
+                nIndex++;
+              } else {
+                break;
               }
             }
-            textSpan.add(TextSpan(text: currentDiffs.last, style: style));
+            newWords.addAll(mergeCharater(addDiffs));
+            j = nIndex - 1;
           }
+        } else {
+          //Todo Last with first space
+          newWords.add(cdiff);
         }
-
-        return textSpan;
       }
     }
-
-    for (int index = 0; index < diffs.length; index++) {
-      final diff = diffs[index];
-      if (diff.operation == -1) continue;
-      textSpans_add.addAll(merge_diff(diff, addedTextStyle));
-    }
-
-    for (int index = 0; index < diffs.length; index++) {
-      final diff = diffs[index];
-      if (diff.operation == 1) continue;
-      textSpans_delete.addAll(merge_diff(diff, deletedTextStyle));
-    }
-
-    TextMerge find_TextSpan(
-      List<TextSpan> textSpans,
-      int index,
-    ) {
-      final textSpan = textSpans[index];
-      final item =
-          TextMerge(text: textSpan.text, index: index, style: textSpan.style);
-      if (index > textSpans.length - 2) return item;
-      final nTextSpan = textSpans[index + 1];
-      if (textSpan.style != nTextSpan.style) return item;
-      final next = find_TextSpan(textSpans, index + 1);
-      final newData = TextMerge(
-        text: '${textSpan.text}${next.text}',
-        index: next.index,
-        style: next.style,
-      );
-      return newData;
-    }
-
-    List<TextSpan> merge_textspan(List<TextSpan> data) {
-      final textSpans = <TextSpan>[];
-      for (int i = 0; i < data.length; i++) {
-        final textSpan = find_TextSpan(data, i);
-        textSpans.add(TextSpan(text: textSpan.text, style: textSpan.style));
-        i = textSpan.index;
-      }
-      return textSpans;
-    }
-
-    final textSpans_add_merge = merge_textspan(textSpans_add);
-    final textSpans_delete_merge = merge_textspan(textSpans_delete);
 
     final textSpans = List<TextSpan>.empty(growable: true);
+    final textSpans_add_merge = List<TextSpan>.empty(growable: true);
+    final textSpans_delete_merge = List<TextSpan>.empty(growable: true);
+    newWords.forEach((cdiff) {
+      textSpans.add(
+        TextSpan(text: cdiff.text, style: getTextStyleByDiffOperation(cdiff)),
+      );
 
-    diffs.forEach((element) {
-      textSpans.add(TextSpan(
-          text: element.text, style: getTextStyleByDiffOperation(element)));
+      if (cdiff.operation == 0) {
+        textSpans_add_merge.add(TextSpan(
+          text: cdiff.text,
+          style: defaultTextStyle,
+        ));
+        textSpans_delete_merge.add(TextSpan(
+          text: cdiff.text,
+          style: defaultTextStyle,
+        ));
+      }
+      if (cdiff.operation == 1)
+        textSpans_add_merge.add(TextSpan(
+          text: cdiff.text,
+          style: addedTextStyle,
+        ));
+      if (cdiff.operation == -1)
+        textSpans_delete_merge.add(TextSpan(
+          text: cdiff.text,
+          style: deletedTextStyle,
+        ));
     });
 
     return Column(
@@ -347,12 +310,4 @@ class PrettyDiffText extends StatelessWidget {
         throw "Unknown DiffCleanupType. DiffCleanupType should be one of: [SEMANTIC], [EFFICIENCY] or [NONE].";
     }
   }
-}
-
-class TextMerge {
-  final int index;
-  String? text;
-  TextStyle? style;
-
-  TextMerge({this.text, this.style, required this.index});
 }
